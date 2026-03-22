@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YMCA TEST SPHERE</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="css/style.css" rel="stylesheet">
+</head>
+<body>
+    <div class="auth-wrapper">
+        <div class="auth-fx">
+            <div class="grid"></div>
+            <div class="stars"></div>
+            <div class="orb" style="left:-120px; top:-90px;"></div>
+            <div class="orb o2" style="right:-180px; bottom:-140px;"></div>
+        </div>
+        <div class="auth-card auth-tilt" data-tilt>
+            <div class="auth-logo">
+                <i class="bi bi-mortarboard-fill text-primary" style="font-size:3rem;"></i>
+                <h2>YMCA TEST SPHERE</h2>
+                <p class="text-muted">Previous Year Questions — Practice & Excel</p>
+            </div>
+
+            <div class="d-grid gap-3 mt-4">
+                <a href="/student/login.html" class="btn btn-gradient btn-lg">
+                    <i class="bi bi-person-fill me-2"></i>Student Login
+                </a>
+                <a href="/student/register.html" class="btn btn-outline-primary btn-lg">
+                    <i class="bi bi-person-plus me-2"></i>Student Register
+                </a>
+                <hr>
+                <a href="/admin/login.html" class="btn btn-outline-secondary">
+                    <i class="bi bi-shield-lock me-2"></i>Admin Login
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/api.js"></script>
+    <script>
+        // 3D tilt (lightweight, no libs)
+        (function () {
+            const card = document.querySelector('[data-tilt]');
+            if (!card) return;
+            const max = 10; // deg
+            function onMove(e) {
+                const r = card.getBoundingClientRect();
+                const x = (e.clientX - r.left) / r.width;
+                const y = (e.clientY - r.top) / r.height;
+                const rx = (0.5 - y) * max;
+                const ry = (x - 0.5) * max;
+                card.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg) translateZ(0)`;
+                card.style.setProperty('--mx', (x * 100) + '%');
+                card.style.setProperty('--my', (y * 100) + '%');
+            }
+            function reset() {
+                card.style.transform = 'rotateX(0deg) rotateY(0deg)';
+                card.style.setProperty('--mx', '50%');
+                card.style.setProperty('--my', '30%');
+            }
+            window.addEventListener('mousemove', onMove, { passive: true });
+            window.addEventListener('mouseleave', reset);
+            reset();
+        })();
+
+        // Redirect if already logged in
+        if (Auth.isLoggedIn()) {
+            if (Auth.getRole() === 'ADMIN') window.location.href = 'admin/dashboard.html';
+            else window.location.href = 'student/dashboard.html';
+        }
+    </script>
+</body>
+</html>

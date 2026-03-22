@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - YMCA TESTSPHERE</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="/css/style.css" rel="stylesheet">
+</head>
+<body>
+    <div class="d-flex">
+        <!-- Sidebar -->
+        <div class="sidebar d-none d-md-flex flex-column" style="width:240px;min-width:240px;">
+            <div class="text-white text-center py-3 px-3 border-bottom border-white border-opacity-25">
+                <i class="bi bi-mortarboard-fill fs-3"></i>
+                <div class="fw-bold mt-1">YMCA Admin</div>
+            </div>
+            <nav class="nav flex-column mt-2">
+                <a href="dashboard.html" class="nav-link active"><i class="bi bi-speedometer2"></i>Dashboard</a>
+                <a href="add-subject.html" class="nav-link"><i class="bi bi-plus-circle"></i>Add Subject</a>
+                <a href="add-question.html" class="nav-link"><i class="bi bi-question-circle"></i>Add Question</a>
+                <a href="view-questions.html" class="nav-link"><i class="bi bi-list-ul"></i>View Questions</a>
+                <a href="view-results.html" class="nav-link"><i class="bi bi-bar-chart"></i>Student Results</a>
+                <a href="materials.html" class="nav-link"><i class="bi bi-journal-text"></i>Notes & PYQs</a>
+            </nav>
+            <div class="mt-auto p-3">
+                <button class="btn btn-outline-light btn-sm w-100" onclick="Auth.logout()">
+                    <i class="bi bi-box-arrow-right me-1"></i>Logout
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-grow-1">
+            <nav class="navbar navbar-custom px-3">
+                <span class="navbar-brand">Admin Dashboard</span>
+                <span class="text-white ms-auto" id="adminName"></span>
+            </nav>
+
+            <div class="container-fluid p-4">
+                <!-- Stats -->
+                <div class="row g-3 mb-4">
+                    <div class="col-md-3 col-6">
+                        <div class="stat-card stat-blue">
+                            <h3 id="subjectCount">-</h3>
+                            <p><i class="bi bi-book me-1"></i>Subjects</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <div class="stat-card stat-green">
+                            <h3 id="questionCount">-</h3>
+                            <p><i class="bi bi-question-circle me-1"></i>Questions</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <div class="stat-card stat-orange">
+                            <h3 id="attemptCount">-</h3>
+                            <p><i class="bi bi-journal-check me-1"></i>Attempts</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <div class="stat-card stat-red">
+                            <h3 id="avgScore">-</h3>
+                            <p><i class="bi bi-graph-up me-1"></i>Avg Score</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <div class="card h-100">
+                            <div class="card-header bg-white fw-semibold">
+                                <i class="bi bi-lightning-fill text-warning me-2"></i>Quick Actions
+                            </div>
+                            <div class="card-body d-flex flex-wrap gap-2">
+                                <a href="add-subject.html" class="btn btn-outline-primary">
+                                    <i class="bi bi-plus-circle me-1"></i>Add Subject
+                                </a>
+                                <a href="add-question.html" class="btn btn-outline-success">
+                                    <i class="bi bi-plus-square me-1"></i>Add Question
+                                </a>
+                                <a href="view-questions.html" class="btn btn-outline-info">
+                                    <i class="bi bi-list-ul me-1"></i>View Questions
+                                </a>
+                                <a href="view-results.html" class="btn btn-outline-warning">
+                                    <i class="bi bi-bar-chart me-1"></i>View Results
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card h-100">
+                            <div class="card-header bg-white fw-semibold">
+                                <i class="bi bi-book-fill text-primary me-2"></i>Subjects Overview
+                            </div>
+                            <div class="card-body" id="subjectOverview">
+                                <div class="spinner-border spinner-border-sm text-primary"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Attempts -->
+                <div class="card">
+                    <div class="card-header bg-white fw-semibold">
+                        <i class="bi bi-clock-history text-primary me-2"></i>Recent Test Attempts
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0 table-custom">
+                                <thead>
+                                    <tr><th>#</th><th>Student</th><th>Subject</th><th>Score</th><th>Correct</th><th>Wrong</th><th>Date</th></tr>
+                                </thead>
+                                <tbody id="recentAttempts">
+                                    <tr><td colspan="6" class="text-center py-3">
+                                        <div class="spinner-border spinner-border-sm text-primary"></div>
+                                    </td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/api.js"></script>
+    <script>
+        requireAuth('ADMIN');
+        document.getElementById('adminName').textContent = Auth.getUser().name;
+
+        async function loadDashboard() {
+            try {
+                const [subjects, questions, results] = await Promise.all([
+                    apiGet('/admin/subjects'),
+                    apiGet('/admin/questions'),
+                    apiGet('/admin/results')
+                ]);
+
+                document.getElementById('subjectCount').textContent = subjects.length;
+                document.getElementById('questionCount').textContent = questions.length;
+                document.getElementById('attemptCount').textContent = results.length;
+
+                const avg = results.length
+                    ? (results.reduce((s, r) => s + r.score, 0) / results.length).toFixed(1) + '%'
+                    : '0%';
+                document.getElementById('avgScore').textContent = avg;
+
+                // Subject overview
+                document.getElementById('subjectOverview').innerHTML = subjects.length === 0
+                    ? '<p class="text-muted">No subjects yet.</p>'
+                    : subjects.map(s => {
+                        const qCount = questions.filter(q => q.subject.id === s.id).length;
+                        return `<div class="d-flex justify-content-between align-items-center py-1 border-bottom">
+                            <span>${s.subjectName}</span>
+                            <span class="badge bg-primary">${qCount} Q</span>
+                        </div>`;
+                    }).join('');
+
+                // Recent attempts
+                const tbody = document.getElementById('recentAttempts');
+                if (results.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-3">No attempts yet.</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = results.slice(0, 10).map((r, i) => `
+                    <tr>
+                        <td>${i + 1}</td>
+                        <td>${r.studentName || '-'}</td>
+                        <td>${r.subjectName}</td>
+                        <td><span class="fw-bold ${r.score >= 50 ? 'text-success' : 'text-danger'}">${r.score.toFixed(1)}%</span></td>
+                        <td class="text-success">${r.correctAnswers}</td>
+                        <td class="text-danger">${r.wrongAnswers}</td>
+                        <td class="text-muted small">${new Date(r.attemptDate).toLocaleDateString()}</td>
+                    </tr>
+                `).join('');
+            } catch (err) {
+                showToast('Failed to load dashboard: ' + err.message, 'error');
+            }
+        }
+
+        loadDashboard();
+    </script>
+</body>
+</html>

@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Subject - YMCA TESTSPHERE</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="/css/style.css" rel="stylesheet">
+</head>
+<body>
+    <div class="d-flex">
+        <!-- Sidebar -->
+        <div class="sidebar d-none d-md-flex flex-column" style="width:240px;min-width:240px;">
+            <div class="text-white text-center py-3 px-3 border-bottom border-white border-opacity-25">
+                <i class="bi bi-mortarboard-fill fs-3"></i>
+                <div class="fw-bold mt-1">YMCA Admin</div>
+            </div>
+            <nav class="nav flex-column mt-2">
+                <a href="dashboard.html" class="nav-link"><i class="bi bi-speedometer2"></i>Dashboard</a>
+                <a href="add-subject.html" class="nav-link active"><i class="bi bi-plus-circle"></i>Add Subject</a>
+                <a href="add-question.html" class="nav-link"><i class="bi bi-question-circle"></i>Add Question</a>
+                <a href="view-questions.html" class="nav-link"><i class="bi bi-list-ul"></i>View Questions</a>
+                <a href="view-results.html" class="nav-link"><i class="bi bi-bar-chart"></i>Student Results</a>
+                <a href="materials.html" class="nav-link"><i class="bi bi-journal-text"></i>Notes & PYQs</a>
+            </nav>
+            <div class="mt-auto p-3">
+                <button class="btn btn-outline-light btn-sm w-100" onclick="Auth.logout()">
+                    <i class="bi bi-box-arrow-right me-1"></i>Logout
+                </button>
+            </div>
+        </div>
+
+        <div class="flex-grow-1">
+            <nav class="navbar navbar-custom px-3">
+                <span class="navbar-brand">Add Subject</span>
+            </nav>
+
+            <div class="container-fluid p-4">
+                <div class="row">
+                    <div class="col-md-5">
+                        <div class="card">
+                            <div class="card-header bg-white fw-semibold">
+                                <i class="bi bi-plus-circle text-primary me-2"></i>New Subject
+                            </div>
+                            <div class="card-body">
+                                <form id="subjectForm">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">Subject Name</label>
+                                        <input type="text" id="subjectName" class="form-control form-control-lg"
+                                               placeholder="e.g. Java, DSA, Aptitude" required>
+                                        <div class="form-text">Enter a unique subject name.</div>
+                                    </div>
+                                    <div id="alertBox" class="alert d-none"></div>
+                                    <button type="submit" class="btn btn-gradient w-100" id="submitBtn">
+                                        <i class="bi bi-plus-circle me-2"></i>Add Subject
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-7">
+                        <div class="card">
+                            <div class="card-header bg-white fw-semibold d-flex justify-content-between">
+                                <span><i class="bi bi-list text-primary me-2"></i>Existing Subjects</span>
+                                <span class="badge bg-primary" id="countBadge">0</span>
+                            </div>
+                            <div class="card-body p-0">
+                                <ul class="list-group list-group-flush" id="subjectList">
+                                    <li class="list-group-item text-center py-3">
+                                        <div class="spinner-border spinner-border-sm text-primary"></div>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Subject Modal -->
+    <div class="modal fade" id="editModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Edit Subject</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="editSubjectId">
+                    <label class="form-label fw-semibold">Subject Name</label>
+                    <input type="text" id="editSubjectName" class="form-control" placeholder="e.g. Java, DSA">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-gradient" id="saveEditBtn">
+                        <i class="bi bi-check-lg me-1"></i>Save
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Subject Modal -->
+    <div class="modal fade" id="deleteModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title text-danger"><i class="bi bi-trash me-2"></i>Delete Subject</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-0">Are you sure you want to delete <strong id="deleteSubjectName"></strong>? All questions and notes in this subject will also be deleted.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
+                        <i class="bi bi-trash me-1"></i>Delete
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/api.js"></script>
+    <script>
+        requireAuth('ADMIN');
+
+        async function loadSubjects() {
+            try {
+                const subjects = await apiGet('/admin/subjects');
+                document.getElementById('countBadge').textContent = subjects.length;
+                const list = document.getElementById('subjectList');
+                if (subjects.length === 0) {
+                    list.innerHTML = '<li class="list-group-item text-muted text-center">No subjects yet.</li>';
+                    return;
+                }
+                list.innerHTML = subjects.map((s, i) => `
+                    <li class="list-group-item d-flex align-items-center gap-3">
+                        <span class="badge bg-primary rounded-pill">${i + 1}</span>
+                        <span class="fw-semibold">${s.subjectName}</span>
+                        <span class="ms-auto d-flex align-items-center gap-2">
+                            <span class="text-muted small">ID: ${s.id}</span>
+                            <button class="btn btn-sm btn-outline-primary" data-id="${s.id}" data-name="${(s.subjectName || '').replace(/"/g, '&quot;')}" onclick="openEdit(this.dataset.id, this.dataset.name)" title="Edit">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" data-id="${s.id}" data-name="${(s.subjectName || '').replace(/"/g, '&quot;')}" onclick="openDelete(this.dataset.id, this.dataset.name)" title="Delete">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </span>
+                    </li>
+                `).join('');
+            } catch (err) {
+                showToast('Failed to load subjects', 'error');
+            }
+        }
+
+        document.getElementById('subjectForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('subjectName').value.trim();
+            const alertBox = document.getElementById('alertBox');
+            const btn = document.getElementById('submitBtn');
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Adding...';
+
+            try {
+                await apiPost('/admin/subjects', { subjectName: name });
+                alertBox.className = 'alert alert-success';
+                alertBox.textContent = `Subject "${name}" added successfully!`;
+                document.getElementById('subjectName').value = '';
+                loadSubjects();
+            } catch (err) {
+                alertBox.className = 'alert alert-danger';
+                alertBox.textContent = err.message;
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-plus-circle me-2"></i>Add Subject';
+            }
+        });
+
+        const editModal = new bootstrap.Modal(document.getElementById('editModal'));
+        const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+        let deleteSubjectId = null;
+
+        function openEdit(id, name) {
+            document.getElementById('editSubjectId').value = id;
+            document.getElementById('editSubjectName').value = name;
+            editModal.show();
+        }
+
+        function openDelete(id, name) {
+            deleteSubjectId = id;
+            document.getElementById('deleteSubjectName').textContent = name;
+            deleteModal.show();
+        }
+
+        document.getElementById('saveEditBtn').addEventListener('click', async () => {
+            const id = document.getElementById('editSubjectId').value;
+            const name = document.getElementById('editSubjectName').value.trim();
+            if (!name) {
+                showToast('Please enter a subject name', 'error');
+                return;
+            }
+            try {
+                await apiPut('/admin/subjects/' + id, { subjectName: name });
+                showToast('Subject updated successfully');
+                editModal.hide();
+                loadSubjects();
+            } catch (err) {
+                showToast(err.message, 'error');
+            }
+        });
+
+        document.getElementById('confirmDeleteBtn').addEventListener('click', async () => {
+            if (!deleteSubjectId) return;
+            try {
+                await apiDelete('/admin/subjects/' + deleteSubjectId);
+                showToast('Subject deleted');
+                deleteModal.hide();
+                deleteSubjectId = null;
+                loadSubjects();
+            } catch (err) {
+                showToast(err.message, 'error');
+            }
+        });
+
+        loadSubjects();
+    </script>
+</body>
+</html>

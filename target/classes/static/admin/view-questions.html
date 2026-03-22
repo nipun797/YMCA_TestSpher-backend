@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View Questions - YMCA TESTSPHERE</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="/css/style.css" rel="stylesheet">
+</head>
+<body>
+<div class="d-flex">
+    <!-- Sidebar -->
+    <div class="sidebar d-none d-md-flex flex-column" style="width:240px;min-width:240px;">
+        <div class="text-white text-center py-3 px-3 border-bottom border-white border-opacity-25">
+            <i class="bi bi-mortarboard-fill fs-3"></i>
+            <div class="fw-bold mt-1">YMCA Admin</div>
+        </div>
+        <nav class="nav flex-column mt-2">
+            <a href="dashboard.html" class="nav-link"><i class="bi bi-speedometer2"></i>Dashboard</a>
+            <a href="add-subject.html" class="nav-link"><i class="bi bi-plus-circle"></i>Add Subject</a>
+            <a href="add-question.html" class="nav-link"><i class="bi bi-question-circle"></i>Add Question</a>
+            <a href="view-questions.html" class="nav-link active"><i class="bi bi-list-ul"></i>View Questions</a>
+            <a href="view-results.html" class="nav-link"><i class="bi bi-bar-chart"></i>Student Results</a>
+        </nav>
+        <div class="mt-auto p-3">
+            <button class="btn btn-outline-light btn-sm w-100" onclick="Auth.logout()">
+                <i class="bi bi-box-arrow-right me-1"></i>Logout
+            </button>
+        </div>
+    </div>
+
+    <div class="flex-grow-1">
+        <nav class="navbar navbar-custom px-3">
+            <span class="navbar-brand">View Questions</span>
+        </nav>
+
+        <div class="container-fluid p-4">
+            <!-- Filter bar -->
+            <div class="card mb-4">
+                <div class="card-body d-flex flex-wrap gap-3 align-items-end">
+                    <div>
+                        <label class="form-label fw-semibold mb-1">Filter by Subject</label>
+                        <select id="filterSubject" class="form-select" style="min-width:200px;">
+                            <option value="">All Subjects</option>
+                        </select>
+                    </div>
+                    <div class="flex-grow-1">
+                        <label class="form-label fw-semibold mb-1">Search</label>
+                        <input type="text" id="searchInput" class="form-control" placeholder="Search question text...">
+                    </div>
+                    <div>
+                        <span class="badge bg-primary fs-6" id="countBadge">0 Questions</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Questions table -->
+            <div class="card">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0 table-custom">
+                            <thead>
+                                <tr>
+                                    <th style="width:50px">#</th>
+                                    <th>Subject</th>
+                                    <th style="width:90px">Type</th>
+                                    <th>Question</th>
+                                    <th>Options</th>
+                                    <th style="width:120px">Answer</th>
+                                    <th style="width:80px">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="questionBody">
+                                <tr><td colspan="7" class="text-center py-4">
+                                    <div class="spinner-border text-primary"></div>
+                                </td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirm Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-danger"><i class="bi bi-trash me-2"></i>Delete Question</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">Are you sure you want to delete this question? This cannot be undone.</div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/js/api.js"></script>
+<script>
+    requireAuth('ADMIN');
+
+    let allQuestions = [];
+    let deleteId = null;
+    const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+
+    async function loadData() {
+        try {
+            const [questions, subjects] = await Promise.all([
+                apiGet('/admin/questions'),
+                apiGet('/admin/subjects')
+            ]);
+            allQuestions = questions;
+
+            // Populate filter
+            const sel = document.getElementById('filterSubject');
+            subjects.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.id;
+                opt.textContent = s.subjectName;
+                sel.appendChild(opt);
+            });
+
+            renderTable(questions);
+        } catch (err) {
+            showToast('Failed to load questions: ' + err.message, 'error');
+        }
+    }
+
+    function renderTable(questions) {
+        document.getElementById('countBadge').textContent = questions.length + ' Questions';
+        const tbody = document.getElementById('questionBody');
+        if (questions.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">No questions found.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = questions.map((q, i) => `
+            <tr>
+                <td>${i + 1}</td>
+                <td><span class="badge bg-primary">${q.subject.subjectName}</span></td>
+                <td><span class="badge bg-dark">${(q.questionType || 'MCQ')}</span></td>
+                <td class="fw-semibold" style="max-width:300px;">${q.questionText}</td>
+                <td style="font-size:0.85rem;">
+                    ${(q.questionType || 'MCQ') === 'TEXT'
+                        ? '<span class="text-muted">Text answer</span>'
+                        : `
+                            <div><span class="badge bg-secondary me-1">A</span>${q.optionA ?? ''}</div>
+                            <div><span class="badge bg-secondary me-1">B</span>${q.optionB ?? ''}</div>
+                            <div><span class="badge bg-secondary me-1">C</span>${q.optionC ?? ''}</div>
+                            <div><span class="badge bg-secondary me-1">D</span>${q.optionD ?? ''}</div>
+                          `
+                    }
+                </td>
+                <td>
+                    ${(q.questionType || 'MCQ') === 'TEXT'
+                        ? `<span class="badge bg-success">${(q.correctAnswer || '').toString().slice(0, 20)}${(q.correctAnswer || '').length > 20 ? '…' : ''}</span>`
+                        : `<span class="badge bg-success fs-6">${q.correctAnswer}</span>`
+                    }
+                </td>
+                <td>
+                    <button class="btn btn-sm btn-outline-danger" onclick="confirmDelete(${q.id})">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function confirmDelete(id) {
+        deleteId = id;
+        deleteModal.show();
+    }
+
+    document.getElementById('confirmDeleteBtn').addEventListener('click', async () => {
+        if (!deleteId) return;
+        try {
+            await apiDelete('/admin/questions/' + deleteId);
+            allQuestions = allQuestions.filter(q => q.id !== deleteId);
+            applyFilters();
+            showToast('Question deleted successfully');
+        } catch (err) {
+            showToast('Failed to delete: ' + err.message, 'error');
+        } finally {
+            deleteModal.hide();
+            deleteId = null;
+        }
+    });
+
+    function applyFilters() {
+        const subjectFilter = document.getElementById('filterSubject').value;
+        const search = document.getElementById('searchInput').value.toLowerCase();
+        let filtered = allQuestions;
+        if (subjectFilter) filtered = filtered.filter(q => q.subject.id == subjectFilter);
+        if (search) filtered = filtered.filter(q => q.questionText.toLowerCase().includes(search));
+        renderTable(filtered);
+    }
+
+    document.getElementById('filterSubject').addEventListener('change', applyFilters);
+    document.getElementById('searchInput').addEventListener('input', applyFilters);
+
+    loadData();
+</script>
+</body>
+</html>

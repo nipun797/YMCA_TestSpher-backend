@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test - YMCA TESTSPHERE</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="/css/style.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-custom">
+        <div class="container-fluid">
+            <span class="navbar-brand" id="testTitle">Loading...</span>
+            <div class="ms-auto d-flex align-items-center gap-3">
+                <span class="badge bg-warning text-dark timer-badge" id="timer">
+                    <i class="bi bi-clock me-1"></i><span id="timeDisplay">--:--</span>
+                </span>
+                <span class="text-white" id="questionCounter"></span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container py-4" id="testContainer">
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary"></div>
+            <p class="mt-2 text-muted">Loading questions...</p>
+        </div>
+    </div>
+
+    <!-- Submit Modal -->
+    <div class="modal fade" id="submitModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-send-check me-2"></i>Submit Test</h5>
+                </div>
+                <div class="modal-body" id="submitModalBody"></div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" data-bs-dismiss="modal">Review Answers</button>
+                    <button class="btn btn-gradient" id="confirmSubmitBtn">
+                        <i class="bi bi-check-circle me-1"></i>Submit Now
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/api.js"></script>
+    <script>
+        requireAuth('STUDENT');
+
+        const subjectId = sessionStorage.getItem('testSubjectId');
+        const subjectName = sessionStorage.getItem('testSubjectName');
+
+        if (!subjectId) window.location.href = 'dashboard.html';
+
+        document.getElementById('testTitle').textContent = subjectName + ' — Test';
+
+        let questions = [];
+        let answers = {};
+        let timerInterval;
+        let timeLeft = 0;
+
+        async function loadTest() {
+            try {
+                questions = await apiGet('/student/questions/' + subjectId);
+                if (questions.length === 0) {
+                    document.getElementById('testContainer').innerHTML =
+                        '<div class="alert alert-warning text-center">No questions available for this subject yet.</div>' +
+                        '<div class="text-center"><a href="dashboard.html" class="btn btn-primary">Back to Dashboard</a></div>';
+                    return;
+                }
+
+                timeLeft = questions.length * 60; // 1 min per question
+                startTimer();
+                renderQuestions();
+            } catch (err) {
+                showToast('Failed to load questions: ' + err.message, 'error');
+            }
+        }
+
+        function renderQuestions() {
+            document.getElementById('questionCounter').textContent = questions.length + ' Questions';
+
+            const attachmentHtml = (q) => {
+                if (!q.attachmentPath) return '';
+                const name = q.attachmentName || 'Attachment';
+                const mime = (q.attachmentMime || '').toLowerCase();
+                if (mime.startsWith('image/')) {
+                    return `
+                        <div class="mb-3">
+                            <img src="${q.attachmentPath}" alt="${name}" class="img-fluid rounded border" />
+                        </div>
+                    `;
+                }
+                if (mime === 'application/pdf') {
+                    return `
+                        <div class="mb-3">
+                            <a class="btn btn-outline-secondary btn-sm" href="${q.attachmentPath}" target="_blank" rel="noopener">
+                                <i class="bi bi-file-earmark-pdf me-1"></i>Open PDF
+                            </a>
+                            <div class="text-muted small mt-1">${name}</div>
+                        </div>
+                    `;
+                }
+                return `
+                    <div class="mb-3">
+                        <a class="btn btn-outline-secondary btn-sm" href="${q.attachmentPath}" target="_blank" rel="noopener">
+                            <i class="bi bi-paperclip me-1"></i>Open attachment
+                        </a>
+                    </div>
+                `;
+            };
+
+            const renderAnswerUI = (q) => {
+                const type = (q.questionType || 'MCQ').toUpperCase();
+                if (type === 'TEXT') {
+                    return `
+                        <div class="mb-2">
+                            <input type="text" class="form-control"
+                                   placeholder="Type your answer..."
+                                   oninput="recordTextAnswer(${q.id}, this.value)">
+                        </div>
+                    `;
+                }
+                // Default MCQ
+                return `
+                    ${['A','B','C','D'].map(opt => `
+                        <div>
+                            <input type="radio" name="q${q.id}" id="q${q.id}_${opt}"
+                                   value="${opt}" class="d-none"
+                                   onchange="recordAnswer(${q.id}, '${opt}')">
+                            <label for="q${q.id}_${opt}" class="option-label" id="lbl_${q.id}_${opt}">
+                                <span class="badge bg-secondary me-2">${opt}</span>
+                                ${q['option' + opt] ?? ''}
+                            </label>
+                        </div>
+                    `).join('')}
+                `;
+            };
+
+            const html = questions.map((q, idx) => `
+                <div class="card question-card mb-4" id="qcard-${q.id}">
+                    <div class="card-body">
+                        <div class="d-flex align-items-start gap-3 mb-3">
+                            <span class="badge bg-primary rounded-pill fs-6">${idx + 1}</span>
+                            <p class="mb-0 fw-semibold fs-6">${q.questionText}</p>
+                        </div>
+                        <div class="ps-4">
+                            ${attachmentHtml(q)}
+                            ${renderAnswerUI(q)}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            document.getElementById('testContainer').innerHTML = `
+                <div class="progress quiz-progress mb-4" id="progressBar">
+                    <div class="progress-bar bg-primary" style="width:0%"></div>
+                </div>
+                ${html}
+                <div class="text-center mt-4 mb-5">
+                    <button class="btn btn-gradient btn-lg px-5" onclick="showSubmitModal()">
+                        <i class="bi bi-send-check me-2"></i>Submit Test
+                    </button>
+                </div>
+            `;
+        }
+
+        function recordAnswer(questionId, option) {
+            answers[questionId] = option;
+            // Update label styles
+            ['A','B','C','D'].forEach(opt => {
+                const el = document.getElementById('lbl_' + questionId + '_' + opt);
+                if (el) el.classList.remove('option-correct');
+            });
+            const chosen = document.getElementById('lbl_' + questionId + '_' + option);
+            if (chosen) {
+                chosen.style.borderColor = '#4f46e5';
+                chosen.style.background = '#eef2ff';
+            }
+
+            // Update progress
+            const pct = (Object.keys(answers).length / questions.length) * 100;
+            document.querySelector('#progressBar .progress-bar').style.width = pct + '%';
+        }
+
+        function recordTextAnswer(questionId, text) {
+            answers[questionId] = text;
+            const pct = (Object.keys(answers).filter(k => (answers[k] ?? '').toString().trim() !== '').length / questions.length) * 100;
+            document.querySelector('#progressBar .progress-bar').style.width = pct + '%';
+        }
+
+        function showSubmitModal() {
+            const answered = Object.keys(answers).length;
+            const unanswered = questions.length - answered;
+            document.getElementById('submitModalBody').innerHTML = `
+                <div class="row text-center g-3">
+                    <div class="col-6">
+                        <div class="stat-card stat-green p-3 rounded">
+                            <h4>${answered}</h4><small>Answered</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="stat-card stat-red p-3 rounded">
+                            <h4>${unanswered}</h4><small>Unanswered</small>
+                        </div>
+                    </div>
+                </div>
+                ${unanswered > 0 ? '<p class="text-warning mt-3 mb-0"><i class="bi bi-exclamation-triangle me-1"></i>Unanswered questions will be marked wrong.</p>' : ''}
+            `;
+            new bootstrap.Modal(document.getElementById('submitModal')).show();
+        }
+
+        document.getElementById('confirmSubmitBtn').addEventListener('click', submitTest);
+
+        async function submitTest() {
+            clearInterval(timerInterval);
+            const btn = document.getElementById('confirmSubmitBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Submitting...';
+
+            // Fill unanswered with empty
+            questions.forEach(q => {
+                if (!answers[q.id]) answers[q.id] = '';
+            });
+
+            try {
+                const result = await apiPost('/student/submit', {
+                    subjectId: parseInt(subjectId),
+                    answers: answers
+                });
+                sessionStorage.setItem('testResult', JSON.stringify(result));
+                window.location.href = 'result.html';
+            } catch (err) {
+                showToast('Submission failed: ' + err.message, 'error');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-check-circle me-1"></i>Submit Now';
+            }
+        }
+
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                const m = Math.floor(timeLeft / 60).toString().padStart(2, '0');
+                const s = (timeLeft % 60).toString().padStart(2, '0');
+                document.getElementById('timeDisplay').textContent = m + ':' + s;
+
+                if (timeLeft <= 60) {
+                    document.getElementById('timer').classList.replace('bg-warning', 'bg-danger');
+                    document.getElementById('timer').classList.add('text-white');
+                }
+
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    showToast('Time is up! Auto-submitting...', 'error');
+                    setTimeout(submitTest, 1500);
+                }
+            }, 1000);
+        }
+
+        loadTest();
+    </script>
+</body>
+</html>
