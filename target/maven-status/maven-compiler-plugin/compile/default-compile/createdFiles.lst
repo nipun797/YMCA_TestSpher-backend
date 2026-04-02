@@ -1,4 +1,5 @@
 com\pyq\entity\User.class
+com\pyq\util\PasswordGenerator.class
 com\pyq\entity\Answer.class
 com\pyq\entity\User$Role.class
 com\pyq\repository\SubjectRepository.class
@@ -27,6 +28,7 @@ com\pyq\repository\TestAttemptRepository.class
 com\pyq\entity\TestAttempt.class
 com\pyq\dto\RegisterRequest.class
 com\pyq\entity\StudyMaterial.class
+com\pyq\util\AdminInitializer.class
 com\pyq\repository\UserRepository.class
 com\pyq\service\TestService.class
 com\pyq\config\JwtUtil.class
